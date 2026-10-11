@@ -596,10 +596,6 @@ function select(id) {
   selected = id;
   for (const name in parts) parts[name].toggleAttribute("data-on", name === id);
   chips.forEach((chip) => chip.setAttribute("aria-pressed", String(chip.dataset.pick === id)));
-  // On the phone strip, slide the active button into view without moving the page.
-  const strip = document.querySelector(".hd-controls");
-  const active = chips.find((chip) => chip.dataset.pick === id);
-  if (active && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2, behavior: still.matches ? "auto" : "smooth" });
   const item = LAYERS.find((entry) => entry.id === id);
   infoTitle.textContent = item ? (LAYERS.indexOf(item) + 1) + " · " + item.name : IDLE_TITLE;
   infoBody.textContent = item ? item.body : IDLE_BODY;
@@ -754,10 +750,10 @@ const PANEL_CSS = `
   .iso-page{margin-top:16px}
   .hd-layout{--peek:164px;grid-template-columns:minmax(0,1fr);grid-template-areas:"plate" "controls" "legend";margin:0 0 24px}
   .hd-side{display:contents}
-  .hd-controls{grid-area:controls;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:10px 16px 4px;scroll-padding-inline:16px}
-  .hd-controls::-webkit-scrollbar{display:none}
+  .hd-controls{grid-area:controls;display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:6px;margin-top:10px;justify-items:stretch}
   .hd-chips{display:contents}
-  .hd-layout .hd-controls button{flex:none;min-height:40px;padding:0 12px}
+  .hd-layout .hd-controls button{min-width:0;min-height:40px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip-n{display:none}
   .hd-info{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;display:flex;flex-direction:column;max-height:min(74vh,600px);padding:0 max(16px, calc((100vw - 680px) / 2)) calc(14px + env(safe-area-inset-bottom));background:var(--anatomy-card);box-shadow:0 -1px 0 var(--anatomy-mid),0 -14px 36px rgba(0,0,0,.10);transform:translateY(calc(100% + 56px));transition:transform .32s var(--anatomy-ease),max-height .32s var(--anatomy-ease)}
   .hd-info[data-sheet="peek"]{transform:none;max-height:var(--peek)}
   .hd-info[data-sheet="full"]{transform:none}
@@ -778,9 +774,13 @@ const PANEL_CSS = `
   .iso-plate-corner[data-corner="hint"]{right:0;white-space:normal;line-height:1.6}
   .hint-sep{display:none}
   .hint-tail{display:block}
+  /* Phones: "Open cup" gets its own full-width row; the five layers share the row below, names only. */
+  .hd-controls{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .hd-controls [data-toggle]{grid-column:1/-1}
+  .hd-layout .hd-chips button{padding:0 2px;font-size:10px;letter-spacing:.03em}
 }
 `;
-const chipsHtml = LAYERS.map((item, i) => `<button type="button" data-pick="${item.id}" aria-pressed="false">${i + 1} · ${item.id}</button>`).join("");
+const chipsHtml = LAYERS.map((item, i) => `<button type="button" data-pick="${item.id}" aria-pressed="false"><span class="chip-n">${i + 1} · </span>${item.id}</button>`).join("");
 const side = `<aside class="hd-side">
 <div class="hd-controls" role="toolbar" aria-label="Right cup"><button type="button" data-toggle>Open cup</button><div class="hd-chips" role="group" aria-label="Layers of the right cup">${chipsHtml}</div></div>
 <section class="hd-info" data-sheet="closed" aria-live="polite" aria-label="Layer description">

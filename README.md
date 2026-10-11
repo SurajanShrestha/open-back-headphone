@@ -23,8 +23,12 @@ All geometry, text and behaviour live in `build.mjs`.
 
 A static site. On Vercel, import the repository with no framework and no build command. `.vercelignore` limits the deployment to `index.html`.
 
+## Built with Anatomy
+
+Made with [Anatomy](https://skills.wheresryan.sh/anatomy/), a skill for crafting detailed, interactive isometric figures that explain an idea as a real physical object. The parts of its kit that this figure uses are in `kit/`.
+
 ## License
 
 MIT. See `LICENSE`.
 
-The anatomy kit in `kit/` is a separate work under its own MIT License (© 2026 Ryan). See `kit/LICENSE`.
+The Anatomy kit in `kit/` is a separate work under its own MIT License (© 2026 Ryan). See `kit/LICENSE`.
