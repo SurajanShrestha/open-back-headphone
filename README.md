@@ -1,5 +1,7 @@
 # Open-back headphone — an interactive anatomy
 
+**Live: [open-back-headphone.vercel.app](https://open-back-headphone.vercel.app/)**
+
 An isometric, interactive figure that shows how open-back headphones work: a headphone on a stand, with one ear cup that comes apart into its five layers.
 
 - **Grab and drag ← →** to open or close the right cup.
@@ -9,7 +11,7 @@ An isometric, interactive figure that shows how open-back headphones work: a hea
 
 ## Run
 
-Open `index.html` in a browser. It is one self-contained file with no dependencies.
+See it live at [open-back-headphone.vercel.app](https://open-back-headphone.vercel.app/), or open `index.html` in a browser. It is one self-contained file with no dependencies.
 
 ## Build
 
