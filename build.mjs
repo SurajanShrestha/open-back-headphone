@@ -494,8 +494,7 @@ const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const LAYERS = ${JSON.stringify(LAYERS)};
 const info = document.querySelector(".hd-info");
-const toggleButton = document.querySelector("[data-toggle]");
-const chips = [...document.querySelectorAll("[data-pick]")];
+const VIEW = [${WIDTH}, ${HEIGHT}];
 const expandButton = info.querySelector("[data-expand]");
 const sheetHead = info.querySelector(".hd-sheet-head");
 const sheetBody = info.querySelector(".hd-sheet-body");
@@ -556,8 +555,6 @@ function draw() {
   const index = LAYERS.findIndex((item) => item.id === selected);
   const text = index >= 0 ? "layer " + (index + 1) + " of 5 · " + LAYERS[index].name.toLowerCase() : apart ? "right cup apart · 5 layers" : "open back · rear wave exits";
   if (readout.textContent !== text) readout.textContent = text;
-  const label = apart ? "Close cup" : "Open cup";
-  if (toggleButton.textContent !== label) toggleButton.textContent = label;
 }
 function tick(now) {
   const dt = last ? Math.min((now - last) / 1000, 1 / 30) : 1 / 60;
@@ -595,7 +592,6 @@ const toggle = () => setApart(!apart);
 function select(id) {
   selected = id;
   for (const name in parts) parts[name].toggleAttribute("data-on", name === id);
-  chips.forEach((chip) => chip.setAttribute("aria-pressed", String(chip.dataset.pick === id)));
   const item = LAYERS.find((entry) => entry.id === id);
   infoTitle.textContent = item ? (LAYERS.indexOf(item) + 1) + " · " + item.name : IDLE_TITLE;
   infoBody.textContent = item ? item.body : IDLE_BODY;
@@ -662,11 +658,23 @@ stage.addEventListener("keydown", (event) => {
   const next = at < 0 ? (step > 0 ? 0 : LAYERS.length - 1) : (at + step + LAYERS.length) % LAYERS.length;
   select(LAYERS[next].id);
 });
-toggleButton.addEventListener("click", toggle);
-// The description sheet (phones): closed, peeking with the first lines, or full. Desktop ignores the state.
+// The description: a floating card on wide screens, a bottom sheet on phones (closed, peeking, or full).
+const phone = matchMedia("(max-width: 700px), (max-aspect-ratio: 1/1)");
+// On wide screens, slide the drawing left just enough that the open card does not cover it.
+function makeRoom() {
+  const svgEl = stage.querySelector("svg");
+  if (info.dataset.sheet === "closed" || phone.matches) { svgEl.style.transform = ""; return; }
+  const box = stage.getBoundingClientRect();
+  const drawn = Math.min(box.width, (box.height * VIEW[0]) / VIEW[1]);
+  const left = box.left + (box.width - drawn) / 2;
+  const need = left + drawn - info.getBoundingClientRect().left + 16;
+  const shift = Math.max(0, Math.min(need, left - box.left));
+  svgEl.style.transform = shift ? "translateX(" + (-shift).toFixed(1) + "px)" : "";
+}
+addEventListener("resize", makeRoom);
 function setSheet(state) {
   info.dataset.sheet = state;
-  document.body.classList.toggle("hd-sheet-open", state !== "closed");
+  makeRoom();
   expandButton.setAttribute("aria-expanded", String(state === "full"));
   expandButton.setAttribute("aria-label", state === "full" ? "Show less" : "Show the full description");
   if (state !== "full") sheetBody.scrollTop = 0;
@@ -691,27 +699,34 @@ window.addEventListener("pointerup", (event) => {
   else if (dy > 24) info.dataset.sheet === "full" ? setSheet("peek") : select(null);
 });
 window.addEventListener("pointercancel", () => { swipe = null; });
-chips.forEach((chip) => chip.addEventListener("click", () => select(chip.dataset.pick === selected ? null : chip.dataset.pick)));
 if (still.matches) touring = false;
 draw();
 `;
 
+// The layer description lives inside the canvas: a floating card on wide screens, a bottom sheet on phones.
+const infoCard = `<section class="hd-info" data-sheet="closed" aria-live="polite" aria-label="Layer description">
+<div class="hd-sheet-head"><button type="button" class="hd-grab" data-expand aria-expanded="false" aria-label="Show the full description"><span></span></button>
+<div class="hd-titlebar"><h2 data-title></h2><div class="hd-step"><button type="button" data-step="-1" aria-label="Previous layer">‹</button><button type="button" data-step="1" aria-label="Next layer">›</button><button type="button" data-close aria-label="Close the description">×</button></div></div></div>
+<div class="hd-sheet-body"><p data-body></p><dl data-facts></dl></div>
+</section>`;
+
 const body = k.plateHtml({
-  fig: "Fig 1",
+  fig: "",
   title: "Open-back headphone",
   hint: "Grab and drag ← → to open/close · click a layer",
   readout: "open back · rear wave exits",
-  keys: [
-    { mark: "edge", label: "Ripples: front wave out of the left pad, back wave out of the right grille" },
-    { mark: "dashed", label: "Signal: music current from the amplifier through the cable" },
-  ],
-  caption:
-    "An open-back headphone on a stand. The cable plugs into the left cup only. Take the right cup apart and its layers line up along the ear axis: velour pad, baffle with front fabric, the driver, the housing with its open spoke cage, and the perforated grille. The driver sits at a slight angle, so sound reaches the ear from slightly in front. Each diaphragm stroke sends one wave to the ear and an opposite wave backward, out through the cage and grille: that is what open-back means. Motion is slowed and enlarged.",
-  body: `<div class="iso-stage" tabindex="0" role="group" aria-label="Open-back headphone. Drag sideways or press Space to take the right cup apart or put it back. Left and right arrows step through its layers; Escape closes the description.">${svg}</div>`,
+  body: `<div class="iso-stage" tabindex="0" role="group" aria-label="Open-back headphone. Drag sideways or press Space to take the right cup apart or put it back. Click a layer to read about it; left and right arrows step through the layers; Escape closes the description.">${svg}</div>${infoCard}`,
 });
 
-const PANEL_CSS = `
-.iso-stage{cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+const PAGE_CSS = `
+html,body{height:100%}
+body{overflow:hidden}
+.iso-page{width:100%;margin:0}
+.iso-figure{margin:0}
+.iso-plate{position:relative;height:100vh;height:100dvh;padding:0;box-shadow:none;overflow:hidden}
+.iso-plate-corners{inset:22px 28px}
+.iso-stage{position:absolute;inset:52px 24px 60px;cursor:grab;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none}
+.iso-stage .iso-svg{width:100%;height:100%;transition:transform .45s var(--anatomy-ease)}
 .iso-stage [data-layer]{cursor:pointer}
 .iso-stage.dragging,.iso-stage.dragging [data-layer]{cursor:grabbing}
 .iso-stage .signal{stroke-dasharray:2.5 5.5;stroke-width:.9;pointer-events:none}
@@ -721,88 +736,50 @@ const PANEL_CSS = `
 .iso-stage [data-part="front"],.iso-stage [data-part="back"],.iso-stage [data-part="arm-on"],.iso-stage [data-part="arm-apart"]{pointer-events:none}
 .iso-stage [data-layer]:hover .iso-edge{stroke:var(--anatomy-hi)}
 .iso-stage [data-layer][data-on] .iso-edge{stroke:var(--anatomy-lit);stroke-width:1.1px}
-.hd-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);grid-template-areas:"plate side" "legend side";column-gap:28px;align-items:start;margin:32px 0 36px}
-.hd-plate{grid-area:plate}
-.hd-legend-wrap{grid-area:legend}
-.hd-side{grid-area:side;position:sticky;top:24px;padding:18px 20px 20px;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid)}
-.hd-controls{display:grid;gap:10px;justify-items:start}
-.hd-chips{display:flex;flex-wrap:wrap;gap:6px}
-.hd-layout button{cursor:pointer;font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-text);background:var(--anatomy-page);border:1px solid var(--anatomy-lo);border-radius:0;padding:7px 10px;line-height:1}
-.hd-layout button:hover{border-color:var(--anatomy-mid);color:var(--anatomy-strong)}
-.hd-layout button:focus-visible{outline:2px solid var(--anatomy-blue);outline-offset:2px}
-.hd-layout button[data-toggle]{color:var(--anatomy-strong);border-color:var(--anatomy-mid)}
-.hd-layout button[aria-pressed="true"]{background:var(--anatomy-strong);border-color:var(--anatomy-strong);color:var(--anatomy-card)}
-.hd-info{margin-top:18px}
+.hint-tap{display:none}
+@media (hover:none){.hint-click{display:none}.hint-tap{display:inline}}
+/* The description card: floats at the top right of the canvas and appears only when a layer is chosen. */
+.hd-info{position:absolute;z-index:5;top:56px;right:28px;width:min(360px,calc(100% - 56px));max-height:calc(100% - 140px);display:flex;flex-direction:column;padding:16px 18px 18px;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid),0 18px 44px rgba(0,0,0,.08);opacity:0;visibility:hidden;transform:translateY(8px);pointer-events:none;transition:opacity .25s var(--anatomy-ease),transform .25s var(--anatomy-ease),visibility 0s linear .32s}
+.hd-info:not([data-sheet="closed"]){opacity:1;visibility:visible;transform:none;pointer-events:auto;transition-delay:0s}
+.hd-info button{cursor:pointer;font-family:var(--anatomy-mono);color:var(--anatomy-text);background:var(--anatomy-page);border:1px solid var(--anatomy-lo);border-radius:0;line-height:1}
+.hd-info button:hover{border-color:var(--anatomy-mid);color:var(--anatomy-strong)}
+.hd-info button:focus-visible{outline:2px solid var(--anatomy-blue);outline-offset:2px}
 .hd-grab{display:none}
 .hd-titlebar{display:flex;align-items:center;gap:10px}
 .hd-info h2{flex:1;margin:0;font-size:15px;font-weight:600;color:var(--anatomy-strong)}
-.hd-step{display:none;gap:4px}
-.hd-info[data-has] .hd-step{display:flex}
-.hd-layout .hd-step button{width:30px;height:30px;padding:0;font-size:15px;letter-spacing:0;text-transform:none}
-.hd-sheet-body{margin-top:8px}
-.hd-info p{margin:0;max-width:62ch;color:var(--anatomy-text);font-size:13.5px;line-height:1.6}
+.hd-step{display:flex;gap:4px}
+.hd-step button{width:30px;height:30px;padding:0;font-size:15px}
+.hd-sheet-body{flex:1;min-height:0;margin-top:8px;overflow-y:auto;overscroll-behavior:contain}
+.hd-info p{margin:0;color:var(--anatomy-text);font-size:13.5px;line-height:1.6}
 .hd-info dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:12px 0 0;font-size:12.5px}
 .hd-info dl:empty{display:none}
 .hd-info dt{font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-muted);padding-top:2px}
 .hd-info dd{margin:0;color:var(--anatomy-strong);font-variant-numeric:tabular-nums}
-/* Phones and small tablets: controls sit right under the figure; the description is a bottom sheet over the page. */
-@media (max-width:900px){
-  .iso-page{margin-top:16px}
-  .hd-layout{--peek:164px;grid-template-columns:minmax(0,1fr);grid-template-areas:"plate" "controls" "legend";margin:0 0 24px}
-  .hd-side{display:contents}
-  .hd-controls{grid-area:controls;display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:6px;margin-top:10px;justify-items:stretch}
-  .hd-chips{display:contents}
-  .hd-layout .hd-controls button{min-width:0;min-height:40px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chip-n{display:none}
-  .hd-info{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;display:flex;flex-direction:column;max-height:min(74vh,600px);padding:0 max(16px, calc((100vw - 680px) / 2)) calc(14px + env(safe-area-inset-bottom));background:var(--anatomy-card);box-shadow:0 -1px 0 var(--anatomy-mid),0 -14px 36px rgba(0,0,0,.10);transform:translateY(calc(100% + 56px));transition:transform .32s var(--anatomy-ease),max-height .32s var(--anatomy-ease)}
-  .hd-info[data-sheet="peek"]{transform:none;max-height:var(--peek)}
-  .hd-info[data-sheet="full"]{transform:none}
+@media (prefers-reduced-motion:reduce){.hd-info,.iso-stage .iso-svg{transition:none}}
+/* Phones: tighter margins and a hint that wraps. */
+@media (max-width:700px){
+  .iso-plate-corners{inset:18px 16px}
+  .iso-stage{inset:44px 8px 88px}
+  .iso-plate-corner[data-corner="hint"]{right:0;bottom:22px;white-space:normal;line-height:1.6}
+  .hint-sep{display:none}
+  .hint-tail{display:block}
+}
+/* Phones and portrait screens: the description is a bottom sheet over the canvas, never over the model's top. */
+@media (max-width:700px),(max-aspect-ratio:1/1){
+  .hd-info{--peek:164px;top:auto;left:0;right:0;bottom:0;width:auto;max-height:min(74%,600px);padding:0 max(16px,calc((100% - 680px) / 2)) calc(14px + env(safe-area-inset-bottom));box-shadow:0 -1px 0 var(--anatomy-mid),0 -14px 36px rgba(0,0,0,.10);opacity:1;transform:translateY(calc(100% + 56px));transition:transform .32s var(--anatomy-ease),max-height .32s var(--anatomy-ease),visibility 0s linear .32s}
+  .hd-info[data-sheet="peek"]{max-height:var(--peek)}
   .hd-grab{display:block;align-self:center;width:72px;height:22px;margin:0 auto;padding:0;border:0!important;background:none!important;cursor:grab;touch-action:none}
   .hd-grab span{display:block;width:36px;height:4px;margin:0 auto;border-radius:2px;background:var(--anatomy-lo)}
   .hd-sheet-head{flex:none;touch-action:none}
-  .hd-layout .hd-step button{width:40px;height:40px}
-  .hd-sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px}
+  .hd-step button{width:40px;height:40px}
   .hd-info[data-sheet="peek"] .hd-sheet-body{overflow:hidden;cursor:pointer;-webkit-mask-image:linear-gradient(#000 45%,transparent);mask-image:linear-gradient(#000 45%,transparent)}
-  body.hd-sheet-open .iso-page{padding-bottom:var(--peek)}
-}
-@media (max-width:900px) and (prefers-reduced-motion:reduce){.hd-info{transition:none}}
-.hint-tap{display:none}
-@media (hover:none){.hint-click{display:none}.hint-tap{display:inline}}
-/* Phones: the hint wraps inside the card instead of running past its edge. */
-@media (max-width:560px){
-  .iso-plate{padding-bottom:88px}
-  .iso-plate-corner[data-corner="hint"]{right:0;white-space:normal;line-height:1.6}
-  .hint-sep{display:none}
-  .hint-tail{display:block}
-  /* Phones: "Open cup" gets its own full-width row; the five layers share the row below, names only. */
-  .hd-controls{grid-template-columns:repeat(5,minmax(0,1fr))}
-  .hd-controls [data-toggle]{grid-column:1/-1}
-  .hd-layout .hd-chips button{padding:0 2px;font-size:10px;letter-spacing:.03em}
 }
 `;
-const chipsHtml = LAYERS.map((item, i) => `<button type="button" data-pick="${item.id}" aria-pressed="false"><span class="chip-n">${i + 1} · </span>${item.id}</button>`).join("");
-const side = `<aside class="hd-side">
-<div class="hd-controls" role="toolbar" aria-label="Right cup"><button type="button" data-toggle>Open cup</button><div class="hd-chips" role="group" aria-label="Layers of the right cup">${chipsHtml}</div></div>
-<section class="hd-info" data-sheet="closed" aria-live="polite" aria-label="Layer description">
-<div class="hd-sheet-head"><button type="button" class="hd-grab" data-expand aria-expanded="false" aria-label="Show the full description"><span></span></button>
-<div class="hd-titlebar"><h2 data-title>Pick a layer</h2><div class="hd-step"><button type="button" data-step="-1" aria-label="Previous layer">‹</button><button type="button" data-step="1" aria-label="Next layer">›</button><button type="button" data-close aria-label="Close the description">×</button></div></div></div>
-<div class="hd-sheet-body"><p data-body>Grab and drag the figure ← → to open or close the right cup. Click any of its layers, or a button above, to see what it is and what it does. Five layers, from the ear outward: pad, baffle, driver, housing, grille.</p>
-<dl data-facts></dl></div>
-</section>
-</aside>`;
-// Split the card from its legend so the grid can place them: card and legend on the left, controls and
-// description on the right; on narrow screens card, controls, legend, with the description as a bottom sheet.
-const plateStart = body.indexOf('<div class="iso-plate">');
-const captionStart = body.indexOf("<figcaption");
-const captionEnd = body.lastIndexOf("</figcaption>") + "</figcaption>".length;
-const plateMarkup = body.slice(plateStart, captionStart);
-const legendMarkup = body.slice(captionStart, captionEnd).replace("<figcaption", "<div").replace(/<\/figcaption>$/, "</div>");
-// The hint corner: one line on wide screens; on phones it breaks after "open/close" and says "tap".
+// The hint corner: one line on wide screens; on phones it breaks after "open/close" and says "tap" on touch screens.
 const hintFrom = `>${"Grab and drag ← → to open/close · click a layer"}<`;
-if (!plateMarkup.includes(hintFrom)) throw new Error("hint text not found");
-const plateWithHint = plateMarkup.replace(hintFrom, '>Grab and drag ← → to open/close<span class="hint-sep"> · </span><span class="hint-tail"><span class="hint-click">click</span><span class="hint-tap">tap</span> a layer</span><');
-const page = `<style>${PANEL_CSS}</style><div class="hd-layout"><div class="hd-plate">${plateWithHint}</div>${side}<div class="hd-legend-wrap">${legendMarkup}</div></div>`;
+if (!body.includes(hintFrom)) throw new Error("hint text not found");
+const page = `<style>${PAGE_CSS}</style>` + body.replace(hintFrom, '>Grab and drag ← → to open/close<span class="hint-sep"> · </span><span class="hint-tail"><span class="hint-click">click</span><span class="hint-tap">tap</span> a layer</span><');
 
 const file = "index.html";
-writeFileSync(join(HERE, file), k.pageHtml({ title: "Open-back headphone", theme, body: page, script: kitScript() + live, width: 1160 }));
+writeFileSync(join(HERE, file), k.pageHtml({ title: "Open-back headphone", theme, body: page, script: kitScript() + live }));
 console.log("wrote", file);

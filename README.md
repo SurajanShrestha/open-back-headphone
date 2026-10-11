@@ -5,9 +5,9 @@
 An isometric, interactive figure that shows how open-back headphones work: a headphone on a stand, with one ear cup that comes apart into its five layers.
 
 - **Grab and drag ← →** to open or close the right cup.
-- **Click a layer** (pad, baffle, driver, housing, grille) to read what it is and what it does.
+- **Click a layer** (pad, baffle, driver, housing, grille) to read what it is and what it does, in a card inside the canvas.
 - The diaphragms, the amplifier's level meter, the signal in the cable and the air ripples all follow one music level.
-- Works on phones: the description opens as a bottom sheet.
+- Full-screen on every device; on phones and portrait screens the description opens as a bottom sheet.
 
 ## Run
 
