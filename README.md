@@ -23,6 +23,8 @@ All geometry, text and behaviour live in `build.mjs`.
 
 A static site. On Vercel, import the repository with no framework and no build command. `.vercelignore` limits the deployment to `index.html`.
 
-## Credits
+## License
 
-Drawn with the anatomy kit in `kit/` (MIT License, © 2026 Ryan). See `kit/LICENSE`.
+MIT. See `LICENSE`.
+
+The anatomy kit in `kit/` is a separate work under its own MIT License (© 2026 Ryan). See `kit/LICENSE`.
