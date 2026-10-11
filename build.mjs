@@ -770,6 +770,15 @@ const PANEL_CSS = `
   body.hd-sheet-open .iso-page{padding-bottom:var(--peek)}
 }
 @media (max-width:900px) and (prefers-reduced-motion:reduce){.hd-info{transition:none}}
+.hint-tap{display:none}
+@media (hover:none){.hint-click{display:none}.hint-tap{display:inline}}
+/* Phones: the hint wraps inside the card instead of running past its edge. */
+@media (max-width:560px){
+  .iso-plate{padding-bottom:88px}
+  .iso-plate-corner[data-corner="hint"]{right:0;white-space:normal;line-height:1.6}
+  .hint-sep{display:none}
+  .hint-tail{display:block}
+}
 `;
 const chipsHtml = LAYERS.map((item, i) => `<button type="button" data-pick="${item.id}" aria-pressed="false">${i + 1} · ${item.id}</button>`).join("");
 const side = `<aside class="hd-side">
@@ -788,7 +797,11 @@ const captionStart = body.indexOf("<figcaption");
 const captionEnd = body.lastIndexOf("</figcaption>") + "</figcaption>".length;
 const plateMarkup = body.slice(plateStart, captionStart);
 const legendMarkup = body.slice(captionStart, captionEnd).replace("<figcaption", "<div").replace(/<\/figcaption>$/, "</div>");
-const page = `<style>${PANEL_CSS}</style><div class="hd-layout"><div class="hd-plate">${plateMarkup}</div>${side}<div class="hd-legend-wrap">${legendMarkup}</div></div>`;
+// The hint corner: one line on wide screens; on phones it breaks after "open/close" and says "tap".
+const hintFrom = `>${"Grab and drag ← → to open/close · click a layer"}<`;
+if (!plateMarkup.includes(hintFrom)) throw new Error("hint text not found");
+const plateWithHint = plateMarkup.replace(hintFrom, '>Grab and drag ← → to open/close<span class="hint-sep"> · </span><span class="hint-tail"><span class="hint-click">click</span><span class="hint-tap">tap</span> a layer</span><');
+const page = `<style>${PANEL_CSS}</style><div class="hd-layout"><div class="hd-plate">${plateWithHint}</div>${side}<div class="hd-legend-wrap">${legendMarkup}</div></div>`;
 
 const file = "index.html";
 writeFileSync(join(HERE, file), k.pageHtml({ title: "Open-back headphone", theme, body: page, script: kitScript() + live, width: 1160 }));
