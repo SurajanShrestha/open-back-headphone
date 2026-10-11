@@ -412,6 +412,7 @@ const svg = k.figureSvg({
     "An open-back headphone hanging on a display stand. The left cup shows its velour pad and the cable socket underneath; a cable runs across the stand to a 3.5 mm plug in a small amplifier, whose level ladder rises and falls with the music. The right cup can come off its yoke: its layers fan out along the ear axis — velour pad, baffle with front fabric and screws, the angled driver with a clear frame and a silver magnet, the housing with its open spoke cage, and the perforated grille. The diaphragm moves; ripples show the front wave going to the ear and the back wave leaving through the open grille.",
   body: [
     `<style>.clear .iso-fill,.clear .iso-shade,.clear .iso-top{opacity:.3}</style>`,
+    `<g data-part="camera">`,
     stand(),
     cableSvg((piece) => piece.mid[2] < 10),
     jackPlug(),
@@ -437,6 +438,7 @@ const svg = k.figureSvg({
     `<g data-part="arm-on">${armRight()}</g>`,
     layer("grille", grille(RIGHT, 1)),
     `<g>${ripple("back", 4)}</g>`,
+    `</g>`,
   ],
 });
 
@@ -540,6 +542,13 @@ function draw() {
   const housingOff = APART.housing * share("housing");
   armOn.style.display = housingOff < 4 ? "" : "none";
   armApart.style.display = housingOff < 4 ? "none" : "";
+  // Camera: keep what is on screen exactly centred, panning from the closed centre to the open one.
+  if (CAM) {
+    const t = ease(Math.min(1, Math.max(0, progress / 1.4)));
+    const cx = CAM.shut.cx + (CAM.open.cx - CAM.shut.cx) * t;
+    const cy = CAM.shut.cy + (CAM.open.cy - CAM.shut.cy) * t;
+    camera.setAttribute("transform", "translate(" + (VIEW[0] / 2 - cx).toFixed(2) + " " + (VIEW[1] / 2 - cy).toFixed(2) + ")");
+  }
   const phase = clock * RATE;
   const push = Math.sin(phase * Math.PI * 2) * 1.6 * level;
   diaphragm.setAttribute("transform", translateAlong(P, [-AXIS[0] * push, -AXIS[1] * push, 0]));
@@ -665,10 +674,12 @@ function makeRoom() {
   const svgEl = stage.querySelector("svg");
   if (info.dataset.sheet === "closed" || phone.matches) { svgEl.style.transform = ""; return; }
   const box = stage.getBoundingClientRect();
-  const drawn = Math.min(box.width, (box.height * VIEW[0]) / VIEW[1]);
-  const left = box.left + (box.width - drawn) / 2;
-  const need = left + drawn - info.getBoundingClientRect().left + 16;
-  const shift = Math.max(0, Math.min(need, left - box.left));
+  const scale = Math.min(box.width / VIEW[0], box.height / VIEW[1]);
+  const middle = box.left + box.width / 2;
+  const left = middle - (CAM.open.w / 2) * scale;
+  const right = middle + (CAM.open.w / 2) * scale;
+  const need = right - info.getBoundingClientRect().left + 16;
+  const shift = Math.max(0, Math.min(need, left - box.left - 8));
   svgEl.style.transform = shift ? "translateX(" + (-shift).toFixed(1) + "px)" : "";
 }
 addEventListener("resize", makeRoom);
@@ -700,6 +711,19 @@ window.addEventListener("pointerup", (event) => {
 });
 window.addEventListener("pointercancel", () => { swipe = null; });
 if (still.matches) touring = false;
+// Measure the drawing closed and fully open (ripples cleared), in the drawing's own units.
+const camera = svg.querySelector('[data-part="camera"]');
+let CAM = null;
+function boundsAt(p) {
+  const keep = progress;
+  progress = p;
+  draw();
+  [...front, ...back].forEach((el) => el.setAttribute("d", ""));
+  const b = camera.getBBox();
+  progress = keep;
+  return { cx: b.x + b.width / 2, cy: b.y + b.height / 2, w: b.width, h: b.height };
+}
+CAM = { shut: boundsAt(0), open: boundsAt(1.4) };
 draw();
 `;
 
@@ -725,7 +749,7 @@ body{overflow:hidden}
 .iso-figure{margin:0}
 .iso-plate{position:relative;height:100vh;height:100dvh;padding:0;box-shadow:none;overflow:hidden}
 .iso-plate-corners{inset:22px 28px}
-.iso-stage{position:absolute;inset:52px 24px 60px;cursor:grab;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none}
+.iso-stage{position:absolute;inset:56px 24px;cursor:grab;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none}
 .iso-stage .iso-svg{width:100%;height:100%;transition:transform .45s var(--anatomy-ease)}
 .iso-stage [data-layer]{cursor:pointer}
 .iso-stage.dragging,.iso-stage.dragging [data-layer]{cursor:grabbing}
@@ -759,7 +783,7 @@ body{overflow:hidden}
 /* Phones: tighter margins and a hint that wraps. */
 @media (max-width:700px){
   .iso-plate-corners{inset:18px 16px}
-  .iso-stage{inset:44px 8px 88px}
+  .iso-stage{inset:88px 8px}
   .iso-plate-corner[data-corner="hint"]{right:0;bottom:22px;white-space:normal;line-height:1.6}
   .hint-sep{display:none}
   .hint-tail{display:block}
